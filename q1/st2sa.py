@@ -4,7 +4,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional, Union
 
-TEST_STRING = "babcbca"
+TEST_STRING = "babcbd"
 
 
 def c2i(s: str) -> int:
@@ -29,7 +29,6 @@ class Node:
     def __repr__(self):
         return TEST_STRING[self.start:self.end+1]
 
-
     def is_leaf(self) -> bool:
         return self.__children_count == 0
 
@@ -52,7 +51,7 @@ class Node:
         print('end' + str(end))
         cur_node = self
         next_child = cur_node.children[c2i(string[start:start+1])]
-        while next_child is not None and len(next_child) <= end-start+1:
+        while next_child is not None and len(next_child) < end-start+1 and not next_child.is_leaf():
             cur_node = next_child
             start += len(next_child)
             next_child = cur_node.children[c2i(string[start:start+1])]
@@ -69,24 +68,30 @@ class Node:
 def insert_letter(root: Node, i: int, string: str):
     n = len(string)
     print('i=', str(i))
-    node_needing_suffix_link = None
+    active_node, start_rem_path, node_needing_suffix_link = None, None, None
+
     for j in range(i+1):
         print('j=', str(j))
+        # if active_node is None:
         active_node, start_rem_path = root.get_active_node(j, i, string)
+        # else:
+        #     active_node = active_node.suffix_link
+            # TODO: continue traversing
+
+        active_nodes_child = active_node.children[c2i(string[start_rem_path])]
+
         if node_needing_suffix_link is not None:
             node_needing_suffix_link.suffix_link = active_node
             node_needing_suffix_link = None
 
-        if active_node.is_leaf() and active_node != root:
+        if active_nodes_child is not None and active_nodes_child.is_leaf() and str(active_nodes_child) == string[start_rem_path:i]:
             # Rule 1
-            active_node.end += 1
+            active_nodes_child.end += 1
         else:
-            active_nodes_child = active_node.children[c2i(string[start_rem_path])]
             k = 0
             if active_nodes_child is not None:
                 while (start_rem_path+k < n and string[active_nodes_child.start+k] == string[start_rem_path+k]):
                     k += 1
-
             if active_nodes_child is None:
                 # Rule 2 (Alt)
                 new_node = Node(start_rem_path, i)
@@ -134,6 +139,6 @@ def print_tree(root: Node):
                     visited.append(neighbour)
             queue.append(None)  # marker
 
-
-root = build_suffix_tree(TEST_STRING)
-print_tree(root)
+if __name__ == '__main__':
+    root = build_suffix_tree(TEST_STRING)
+    print_tree(root)
