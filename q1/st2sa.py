@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 from typing import List, Tuple, Optional, Union
+import timeit
 
-TEST_STRING = "babcbd"
 
 
 def c2i(s: str) -> int:
@@ -15,19 +15,20 @@ class Node:
     __ASCII_RANGE = 90
     __children_count = 0
 
-    def __init__(self, start: int, end: int):
+    def __init__(self, start: int, end: int, s: str):
         self.start = start
         self.end = end
         self.children: List[Node | None] = [None]*self.__ASCII_RANGE
         self.suffix_link: Optional[Node] = None
         self.value: int = -1
         self.atestchildren = []
+        self.s = s
 
     def __len__(self):
         return self.end-self.start+1
 
     def __repr__(self):
-        return TEST_STRING[self.start:self.end+1]
+        return self.s[self.start:self.end+1]
 
     def is_leaf(self) -> bool:
         return self.__children_count == 0
@@ -67,26 +68,25 @@ class Node:
 
 def insert_letter(root: Node, i: int, string: str):
     n = len(string)
-    print('i=', str(i))
     active_node, start_rem_path, node_needing_suffix_link = None, None, None
 
     for j in range(i+1):
-        print('j=', str(j))
-        # if active_node is None:
-        active_node, start_rem_path = root.get_active_node(j, i, string)
-        # else:
-        #     active_node = active_node.suffix_link
-            # TODO: continue traversing
+        if active_node is None:
+            active_node, start_rem_path = root.get_active_node(j, i, string)
+        else:
+            active_node, start_rem_path = active_node.suffix_link.get_active_node(j, i, string)
 
         active_nodes_child = active_node.children[c2i(string[start_rem_path])]
 
-        if node_needing_suffix_link is not None:
-            node_needing_suffix_link.suffix_link = active_node
-            node_needing_suffix_link = None
+        
+        
 
         if active_nodes_child is not None and active_nodes_child.is_leaf() and str(active_nodes_child) == string[start_rem_path:i]:
             # Rule 1
             active_nodes_child.end += 1
+            if node_needing_suffix_link is not None:
+                node_needing_suffix_link.suffix_link = active_node
+                node_needing_suffix_link = None
         else:
             k = 0
             if active_nodes_child is not None:
@@ -94,8 +94,12 @@ def insert_letter(root: Node, i: int, string: str):
                     k += 1
             if active_nodes_child is None:
                 # Rule 2 (Alt)
-                new_node = Node(start_rem_path, i)
+                new_node = Node(start_rem_path, i, string)
                 active_node.add_child(new_node, string)
+
+                if node_needing_suffix_link is not None:
+                    node_needing_suffix_link.suffix_link = active_node
+                    node_needing_suffix_link = None
             elif start_rem_path+k < i+1:
                 # Rule 2 (Reg)
                 
@@ -103,20 +107,31 @@ def insert_letter(root: Node, i: int, string: str):
                 assert active_nodes_child is not None
                 active_node.remove_child(active_nodes_child, string)
                 new_node = Node(active_nodes_child.start,
-                                active_nodes_child.start+k-1)
-                new_node_child = Node(start_rem_path+k, i)
+                                active_nodes_child.start+k-1, string)
+                new_node_child = Node(start_rem_path+k, i, string)
                 new_node.add_child(new_node_child, string)
                 active_nodes_child.start += k
                 new_node.add_child(active_nodes_child, string)
                 active_node.add_child(new_node, string)
+
+                # resolve suffix link from previous iteration
+                if node_needing_suffix_link is not None:
+                    node_needing_suffix_link.suffix_link = new_node
+                    node_needing_suffix_link = None
+
                 # add suffix link
                 node_needing_suffix_link = new_node
+            else:
+                # Rule 3
+                if node_needing_suffix_link is not None:
+                    node_needing_suffix_link.suffix_link = active_node
+                    node_needing_suffix_link = None
         print('finish i,j')
 
 
 def build_suffix_tree(string: str):
     n = len(string)
-    root = Node(0, -1)
+    root = Node(0, -1, string)
     root.suffix_link = root
     for i in range(n):
         insert_letter(root, i, string)
@@ -140,5 +155,8 @@ def print_tree(root: Node):
             queue.append(None)  # marker
 
 if __name__ == '__main__':
-    root = build_suffix_tree(TEST_STRING)
-    print_tree(root)
+    start = timeit.default_timer()
+    root = build_suffix_tree('babcbcaa')
+    stop = timeit.default_timer()
+    print('time: ', stop-start)
+    # print_tree(root)
