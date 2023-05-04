@@ -6,11 +6,11 @@ from typing import List, Tuple, Optional, Union
 
 
 def c2i(s: str) -> int:
-    return ord(s)-37
+    return ord(s)-36
 
 
 class Node:
-    __ASCII_RANGE = 90
+    __ASCII_RANGE = 91
     __children_count = 0
 
     def __init__(self, start: int, end: int, s: str, value: int):
@@ -54,7 +54,7 @@ class Node:
 
     def get_active_node(self, start: int, end: int, string: str) -> Tuple[Node, int]:
         # finds last node IN str[start..end] starting from this node
-        print('end' + str(end))
+        # print('end' + str(end))
         cur_node = self
         next_child = cur_node.children[c2i(string[start:start+1])]
         while next_child is not None and len(next_child) < end-start+1 and not next_child.is_leaf():
@@ -74,14 +74,19 @@ class Node:
 def insert_letter(root: Node, i: int, string: str):
     n = len(string)
     active_node, start_rem_path, node_needing_suffix_link = None, None, None
+    suffix_link_rem_length = 0
 
     for j in range(i+1):
-        if active_node is None:
+        if i==6 and j==1:
+            pass
+        if j == 0 or active_node.suffix_link == root:
             active_node, start_rem_path = root.get_active_node(j, i, string)
         else:
-            active_node, start_rem_path = active_node.suffix_link.get_active_node(j, i, string)
+            active_node, start_rem_path = active_node.suffix_link.get_active_node(i-suffix_link_rem_length, i, string)
 
-        active_nodes_child = active_node.children[c2i(string[start_rem_path])]
+        active_nodes_child = active_node.children[c2i(string[start_rem_path:start_rem_path+1])]
+        if active_nodes_child is not None:
+            suffix_link_rem_length = len(active_nodes_child)
 
         if active_nodes_child is not None and active_nodes_child.is_leaf() and str(active_nodes_child) == string[start_rem_path:i]:
             # Rule 1
@@ -129,8 +134,7 @@ def insert_letter(root: Node, i: int, string: str):
                 if node_needing_suffix_link is not None:
                     node_needing_suffix_link.suffix_link = active_node
                     node_needing_suffix_link = None
-        
-        print('finish i,j')
+        print('i=', i, ' | j=', j, ':\n', root.myprint())
 
 
 def build_suffix_tree(string: str):
@@ -141,25 +145,31 @@ def build_suffix_tree(string: str):
         insert_letter(root, i, string)
     return root
 
-def build_suffix_array(root: Node, n: int):
-    suf_arr: List[int] = [-1] * n
+def build_suffix_array(root: Node, s):
+    n = len(s)
+    suf_arr: List[int] = []
     visited = []
-    stack = [root]
-    while stack:
-        cur_node = stack.pop(0)
+    to_visit = [root]
+    while to_visit:
+        cur_node = to_visit.pop()
         visited.append(cur_node)
-        children: List[Node] = []
-        for child in cur_node.children:
-            if child is not None:
-                children.insert(0, child)
-        stack += children
-        
+
+        if cur_node.is_leaf():
+            print('----', s[:cur_node.end+1])
+            suf_arr.append(cur_node.value)
+        else:
+            for child in reversed(cur_node.children):
+                if child:
+                    to_visit.append(child)
+    return suf_arr
 
 
 if __name__ == '__main__':
-    s = 'babcbd'
+    s = 'mississippi'
     s += '$'
     root = build_suffix_tree(s)
-    print(root.myprint())
-    suf_arr = build_suffix_array(root, len(s))
-    print(suf_arr)
+    # print(root.myprint())
+    suf_arr = build_suffix_array(root, s)
+    output_filename = 'output_sa.txt'
+    with open(output_filename, 'w') as f:
+        f.write(str.join('\n', map(lambda x: str(x), suf_arr)))
