@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 from typing import List, Tuple, Optional, Union
-import timeit
-
 
 
 def c2i(s: str) -> int:
@@ -15,12 +13,12 @@ class Node:
     __ASCII_RANGE = 90
     __children_count = 0
 
-    def __init__(self, start: int, end: int, s: str):
+    def __init__(self, start: int, end: int, s: str, value: int):
         self.start = start
         self.end = end
         self.children: List[Node | None] = [None]*self.__ASCII_RANGE
         self.suffix_link: Optional[Node] = None
-        self.value: int = -1
+        self.value: int = value
         self.atestchildren = []
         self.s = s
 
@@ -29,7 +27,14 @@ class Node:
 
     def __repr__(self):
         return self.s[self.start:self.end+1]
+    
 
+    def myprint(self, level=0):
+        ret = "   "*level+self.s[self.start:self.end+1]+"\n"
+        for child in self.atestchildren:
+            ret += child.myprint(level+1)
+        return ret
+    
     def is_leaf(self) -> bool:
         return self.__children_count == 0
 
@@ -78,12 +83,10 @@ def insert_letter(root: Node, i: int, string: str):
 
         active_nodes_child = active_node.children[c2i(string[start_rem_path])]
 
-        
-        
-
         if active_nodes_child is not None and active_nodes_child.is_leaf() and str(active_nodes_child) == string[start_rem_path:i]:
             # Rule 1
             active_nodes_child.end += 1
+            active_nodes_child.value = j+1
             if node_needing_suffix_link is not None:
                 node_needing_suffix_link.suffix_link = active_node
                 node_needing_suffix_link = None
@@ -94,7 +97,7 @@ def insert_letter(root: Node, i: int, string: str):
                     k += 1
             if active_nodes_child is None:
                 # Rule 2 (Alt)
-                new_node = Node(start_rem_path, i, string)
+                new_node = Node(start_rem_path, i, string, j+1)
                 active_node.add_child(new_node, string)
 
                 if node_needing_suffix_link is not None:
@@ -102,13 +105,13 @@ def insert_letter(root: Node, i: int, string: str):
                     node_needing_suffix_link = None
             elif start_rem_path+k < i+1:
                 # Rule 2 (Reg)
-                
+
                 # k points to 1st mismatch
                 assert active_nodes_child is not None
                 active_node.remove_child(active_nodes_child, string)
                 new_node = Node(active_nodes_child.start,
-                                active_nodes_child.start+k-1, string)
-                new_node_child = Node(start_rem_path+k, i, string)
+                                active_nodes_child.start+k-1, string, j+1)
+                new_node_child = Node(start_rem_path+k, i, string, -1)
                 new_node.add_child(new_node_child, string)
                 active_nodes_child.start += k
                 new_node.add_child(active_nodes_child, string)
@@ -126,37 +129,37 @@ def insert_letter(root: Node, i: int, string: str):
                 if node_needing_suffix_link is not None:
                     node_needing_suffix_link.suffix_link = active_node
                     node_needing_suffix_link = None
+        
         print('finish i,j')
 
 
 def build_suffix_tree(string: str):
     n = len(string)
-    root = Node(0, -1, string)
+    root = Node(0, -1, string, -1)
     root.suffix_link = root
     for i in range(n):
         insert_letter(root, i, string)
     return root
 
+def build_suffix_array(root: Node, n: int):
+    suf_arr: List[int] = [-1] * n
+    visited = []
+    stack = [root]
+    while stack:
+        cur_node = stack.pop(0)
+        visited.append(cur_node)
+        children: List[Node] = []
+        for child in cur_node.children:
+            if child is not None:
+                children.insert(0, child)
+        stack += children
+        
 
-def print_tree(root: Node):
-    # bfs
-    visited: List[Node | None] = [root]
-    queue: List[Union[Node, None]] = [root]
-    while queue:
-        cur = queue.pop(0)
-        if cur is None:
-            print('------------------')
-        else:
-            print(cur)
-            for neighbour in cur.atestchildren:
-                if neighbour not in visited:
-                    queue.append(neighbour)
-                    visited.append(neighbour)
-            queue.append(None)  # marker
 
 if __name__ == '__main__':
-    start = timeit.default_timer()
-    root = build_suffix_tree('babcbcaa')
-    stop = timeit.default_timer()
-    print('time: ', stop-start)
-    # print_tree(root)
+    s = 'babcbd'
+    s += '$'
+    root = build_suffix_tree(s)
+    print(root.myprint())
+    suf_arr = build_suffix_array(root, len(s))
+    print(suf_arr)
